@@ -3,7 +3,8 @@
 **Course**: CMPE 257 Machine Learning (Fall 2026)  
 **Author**: Raj Dharmendra Kadvani (Student ID: 018283798)  
 **Institution**: San Jose State University  
-**Instructor / TA**: Aditya Hegde  
+**Instructor**: Prof. Zara Hajihashemi  
+**Teaching Assistant**: Aditya Hegde  
 
 ---
 
