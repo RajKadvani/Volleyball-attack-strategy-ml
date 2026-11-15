@@ -159,7 +159,7 @@ volleyball-attack-strategy/
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/rajkadvani511/volleyball-attack-strategy-ml.git
+git clone https://github.com/RajKadvani/volleyball-attack-strategy-ml.git
 cd volleyball-attack-strategy-ml
 ```
 
