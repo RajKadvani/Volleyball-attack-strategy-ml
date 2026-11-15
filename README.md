@@ -1,98 +1,101 @@
-# Discovering Successful Volleyball Attack Strategies Using Machine Learning
+# Volleyball Attack Strategy Prediction and Tactical Discovery Using Machine Learning
 
-[![Python Version](https://img.shields.io/badge/Python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue)](https://www.python.org/)
-[![Course](https://img.shields.io/badge/Course-CMPE%20257%20Machine%20Learning-green)](https://www.sjsu.edu/)
-[![Institution](https://img.shields.io/badge/Institution-San%20Jose%20State%20University-gold)](https://www.sjsu.edu/)
-[![Milestone](https://img.shields.io/badge/Milestone-GitHub%20Repository%20Submission-brightgreen)]()
-
-> **Author**: Raj Dharmendra Kadvani  
-> **Student ID**: 018283798  
-> **Course**: CMPE 257 Machine Learning (Fall 2026)  
-> **Department**: Department of Computer Engineering, San José State University  
-> **TA**: Aditya Hegde  
+**Course**: CMPE 257 Machine Learning (Fall 2026)  
+**Author**: Raj Dharmendra Kadvani (Student ID: 018283798)  
+**Institution**: San Jose State University  
+**Instructor / TA**: Aditya Hegde  
 
 ---
 
-## 📌 Executive Summary
+## Project Overview
 
-Volleyball is an intensely fast, coordinated sport where the outcome of an attack does not rely on individual skill in isolation, but on a tightly coupled sequence of events: reception pass quality, setter decision and tempo, attacker court zone, and the configuration of opposing blockers. While coaches and analysts historically dissect matches through hours of manual video review, traditional scouting does not systematically isolate and compare high-precision relational combinations across teams.
+In volleyball, an attack point (kill) rarely comes from an isolated hit. Instead, the outcome depends on a connected sequence of actions: how well the ball was passed (in-system vs out-of-system), what type of set was delivered, the attacker's court zone, and how many opponent blockers are contesting at the net.
 
-Inspired by the landmark research by **Van Haaren et al., *"Analyzing Volleyball Match Data from the 2014 World Championships Using Machine Learning Techniques"* (ACM SIGKDD 2016)**, this project models volleyball attack sequences as a machine learning problem. Using structured rally possession data from the **VREN Volleyball Rally Dataset**, we engineer domain-specific relational features, evaluate both transparent and ensemble machine learning classifiers using **match-level grouped cross-validation**, and extract interpretable tactical rules to identify offensive play combinations that maximize scoring probability (kill percentage).
+While coaches traditionally spend hours reviewing match video to spot tendencies, manual scouting is time-consuming and makes it hard to systematically evaluate multi-action combinations across matches.
+
+The goal of this project is to apply machine learning to structured volleyball rally data in order to:
+1. Predict whether an attack sequence will result in a point (attack success / kill).
+2. Compare linear baselines against non-linear tree ensembles using match-level cross-validation to prevent data leakage.
+3. Extract interpretable, high-precision strategy rules from decision trees that coaches and players can use for tactical match preparation.
+
+This project is inspired by the research by Jan Van Haaren et al., *"Analyzing Volleyball Match Data from the 2014 World Championships Using Machine Learning Techniques"* (ACM SIGKDD 2016), adapted to open structured rally data from the VREN dataset.
 
 ---
 
-## 🎯 Research Questions
+## Dataset
 
-1. **Which combination of pass quality, setter delivery, attacker court zone, and opposing blocker counts maximizes the probability of winning an offensive rally possession?**
-2. **How much predictive advantage do non-linear ensemble models (Random Forest, XGBoost) offer over interpretable baselines (Logistic Regression, Decision Trees)?**
-3. **Can we automatically extract human-interpretable, high-precision decision rules that volleyball coaches and analysts can adopt for tactical game preparation?**
+This project uses structured rally possession data based on the open-source **VREN (Volleyball Rally Dataset with Expression Notation Language)** [Xia et al., arXiv:2209.13846], which documents indoor volleyball matches from NCAA Division I and international games.
 
----
+### Feature Summary
 
-## 📊 Dataset Specification
-
-We utilize the open-source **VREN (Volleyball Rally Dataset with Expression Notation Language)** [Xia et al., arXiv:2209.13846], comprising **1,632 rallies and 12,112 action features** collected from NCAA Division I Big West Conference matches and international fixtures.
-
-### Core Feature Dictionary
-
-| Feature | Type | Description |
+| Feature Name | Type | Description |
 |---|---|---|
-| `match_id` | Categorical / Group | Unique match identifier (used for GroupKFold to prevent intra-match leakage) |
-| `rally_id` | Integer | Rally index within match |
-| `round` | Integer | Round sequence within rally (1 = serve receive first attack, 2+ = transition play) |
+| `match_id` | Categorical | Unique match identifier (used for GroupKFold cross-validation) |
+| `rally_id` | Integer | Rally index within each match |
+| `round` | Integer | Possession round within rally (1 = serve receive attack, 2+ = transition) |
 | `team` | Categorical | Attacking team identifier (`Team_A`, `Team_B`) |
-| `serve_type` | Categorical | Serve technique initiating the rally (`Jump_Serve`, `Float_Serve`, `Topspin`) |
-| `pass_rating` | Ordinal | Reception quality (`1 = Poor / Out-of-System`, `2 = Medium`, `3 = Perfect / In-System`) |
-| `set_type` | Categorical | Setter trajectory and tempo (`Quick`, `Outside`, `Slide`, `Pipe`, `High_Ball`, `Opposite`) |
+| `serve_type` | Categorical | Serve technique (`Jump_Serve`, `Float_Serve`, `Topspin`) |
+| `pass_rating` | Ordinal | Reception quality (`1 = Poor / Out-of-system`, `2 = Medium`, `3 = Perfect / In-system`) |
+| `set_type` | Categorical | Set trajectory and tempo (`Quick`, `Outside`, `Slide`, `Pipe`, `High_Ball`, `Opposite`) |
 | `set_zone` | Categorical | Net zone where set was placed (`Zone_2`, `Zone_3`, `Zone_4`) |
-| `attack_type` | Categorical | Spiker offensive stroke execution (`Hard_Spike`, `Tip`, `Roll_Shot`, `Tool_Block`, `Off_Speed`) |
-| `attack_zone` | Categorical | Court zone of attack execution (`Zone_1` through `Zone_6`) |
-| `num_blockers` | Integer | Number of opposing blockers contesting the hit (`0`, `1`, `2`, `3`) |
-| `block_touch` | Binary | Whether block touched / deflected ball (`0 = No`, `1 = Yes`) |
-| **`attack_success`** | **Binary (Target)** | **Terminal possession outcome (`1 = Point Scored / Kill`, `0 = Defended / Point Lost`)** |
+| `attack_type` | Categorical | Hitter stroke technique (`Hard_Spike`, `Tip`, `Roll_Shot`, `Tool_Block`, `Off_Speed`) |
+| `attack_zone` | Categorical | Court zone of the attack (`Zone_1` to `Zone_6`) |
+| `num_blockers` | Integer | Number of opposing blockers at the net (`0`, `1`, `2`, `3`) |
+| `block_touch` | Binary | Whether the defensive block touched the ball (`0 = No`, `1 = Yes`) |
+| **`attack_success`** | **Binary (Target)** | **Possession outcome (`1 = Point Won / Kill`, `0 = Defended / Point Lost`)** |
 
-> **Target Leakage Prevention**: Features encoding terminal match results (such as winning error codes, referee whistle classifications, or post-rally tags) are strictly audited and eliminated from input design matrices.
+**Data Leakage Prevention**: Features encoding terminal rally outcomes (such as error classifications, referee whistle reasons, or post-rally tags) are explicitly excluded from the feature matrix so models only train on information available before the attack concludes.
 
 ---
 
-## 🏗️ System Architecture & Methodology
+## Project Pipeline
 
 ```mermaid
 flowchart TD
-    A["Raw Volleyball Rally Data (VREN / NCAA Matches)"] --> B["Data Ingestion & Target Leakage Audit (src/data_loader.py)"]
-    B --> C["Domain Feature Engineering (src/features.py)"]
-    C --> C1["System State (In-System vs Out-of-System)"]
-    C --> C2["Tempo & Quickness (Slide, Quick, High Ball)"]
-    C --> C3["Defensive Pressure (Block Advantage, 0-3 Blockers)"]
-    C --> C4["Court Geometry (Front Row Zones 2,3,4 vs Back Row 1,5,6)"]
-    
-    C1 & C2 & C3 & C4 --> D["Match-Level GroupKFold Split (Grouped by match_id)"]
-    
-    D --> E["Model Training & Cross-Validation (src/models.py)"]
-    E --> F1["Logistic Regression (Interpretable Odds Ratios)"]
-    E --> F2["Decision Tree Classifier (Transparent Rules)"]
-    E --> F3["Random Forest (Bagging Ensemble)"]
-    E --> F4["Gradient Boosting / XGBoost"]
-    
-    F1 & F2 & F3 & F4 --> G["Evaluation & Diagnostics (src/evaluate.py)"]
-    G --> H1["Metrics: Accuracy, Precision, Recall, F1, ROC-AUC"]
-    G --> H2["Feature Importance Ranking"]
-    
-    F2 --> I["Strategy Rule Extraction (src/rule_extraction.py)"]
-    I --> J["High-Precision Tactical Strategy Rules"]
-    
-    J & G --> K["Interactive Streamlit Simulator (app.py)"]
+    A["Raw Volleyball Rally Data (VREN / NCAA Games)"] --> B["Data Loader & Leakage Audit (src/data_loader.py)"]
+    B --> C["Feature Engineering (src/features.py)"]
+    C --> D["Match-Level GroupKFold Split (src/models.py)"]
+    D --> E["Model Training & Cross-Validation"]
+    E --> F1["Logistic Regression (Baseline)"]
+    E --> F2["Decision Tree (Rule Extraction)"]
+    E --> F3["Random Forest (Bagging)"]
+    E --> F4["XGBoost / Gradient Boosting"]
+    F1 & F2 & F3 & F4 --> G["Evaluation: Precision, Recall, F1, ROC-AUC (src/evaluate.py)"]
+    F2 --> H["Strategy Rule Extraction (src/rule_extraction.py)"]
+    H --> I["Tactical Coaching Insights & Streamlit App (app.py)"]
 ```
 
 ---
 
-## 🔬 Experimental Methodology & Evaluation Plan
+## Feature Engineering
 
-### 1. Match-Level Group Cross-Validation
-Standard random row splitting introduces severe data leakage in sports analytics because rallies within the same match share identical player personnel, coaching matchups, and tactical schemes. We implement **5-Fold `GroupKFold` grouped on `match_id`**, ensuring that rallies from the evaluation match have never been seen during training.
+To capture domain knowledge from volleyball gameplay, several engineered features were created in `src/features.py`:
+- `is_in_system`: Binary indicator for `pass_rating == 3` (perfect pass allowing all offensive tempo options).
+- `is_out_of_system`: Binary indicator for `pass_rating == 1` (forces high-ball sets to the outside pins).
+- `is_quick_attack`: Indicates fast-tempo sets (Quick, Slide) that test opposing middle blockers.
+- `is_back_row`: Separates back-row pipe attacks (Zones 1, 5, 6) from front-row net attacks (Zones 2, 3, 4).
+- `block_advantage`: Net difference against a standard double block (`2.0 - num_blockers`).
+- `tempo_blocker_edge`: Interaction feature capturing quick tempo attacks executed against single or split blocks.
 
-### 2. Baseline Model Performance Comparison
-Initial cross-validation results across the 4 core models:
+---
+
+## Machine Learning Models
+
+Four models were selected to compare linear, white-box, and ensemble approaches:
+
+1. **Logistic Regression (Baseline)**: Provides a linear benchmark and interpretable odds ratios ($e^\beta$) for each tactical factor.
+2. **Decision Tree Classifier**: A transparent white-box model with controlled depth (`max_depth=4`), used directly for Phase 3 strategy rule extraction.
+3. **Random Forest Classifier**: An ensemble of 100 decision trees to capture non-linear feature interactions and compute feature importances.
+4. **Gradient Boosting / XGBoost**: Boosting model that iteratively minimizes residual errors to achieve the highest predictive accuracy.
+
+### Cross-Validation Strategy
+In sports analytics, standard random row splitting causes severe data leakage because rallies within the same match share identical player matchups and game context. We used **5-Fold GroupKFold cross-validation grouped by `match_id`**, ensuring that evaluation rallies belong to matches the model has never trained on.
+
+---
+
+## Baseline Results
+
+Results from 5-fold match-grouped cross-validation:
 
 | Model | Accuracy | Precision | Recall | F1-Score | ROC-AUC |
 |---|---|---|---|---|---|
@@ -101,112 +104,101 @@ Initial cross-validation results across the 4 core models:
 | **Random Forest** (100 trees) | 74.8% ± 1.2% | 75.6% ± 1.4% | 73.4% ± 1.7% | 74.5% ± 1.4% | 0.819 ± 0.01 |
 | **Gradient Boosting / XGBoost** | **76.1% ± 1.1%** | **77.2% ± 1.3%** | **74.5% ± 1.5%** | **75.8% ± 1.2%** | **0.835 ± 0.01** |
 
----
-
-## 💡 Discovered Tactical Strategy Rules (Phase 3)
-
-Using decision path mining with minimum support ($\ge 3\%$) and validation precision constraints, the pipeline extracts actionable tactical strategies:
-
-| Strategy ID | Tactical Condition Sequence | Kill Rate (Precision) | Dataset Support | Tactical Coaching Insight |
-|---|---|---|---|---|
-| **STRAT-01** | `Pass Rating == 3` (In-System) **AND** `Set Type in [Quick, Slide]` **AND** `Blockers <= 1` | **81.4%** | 18.6% | **Optimal Offensive Edge**: In-system passing allows middle tempo to freeze the defense, generating high-efficiency 1-on-1 attacks. |
-| **STRAT-02** | `Opposing Blockers >= 2` **AND** `Attack Type == Tool_Block` | **68.2%** | 7.4% | **Bail-out Execution**: When facing formed double/triple blocks, deliberately tooling off the blocker's hands yields far higher success than brute-force spikes. |
-| **STRAT-03** | `Pass Rating == 1` (Out-of-System) **AND** `Set Type == High_Ball` **AND** `Blockers == 3` | **31.8%** | 13.2% | **Severe Defensive Vulnerability**: Predictable high outside sets give defense ample time to commit triple blocks; coaches should instruct roll-shots to maintain rally. |
-| **STRAT-04** | `Round >= 2` (Transition) **AND** `Attack Zone == Zone_4` **AND** `Blockers <= 2` | **64.5%** | 22.1% | **Transition Opportunity**: Fast counter-attack sets to the outside pin before opposing middle blocker can close. |
+Tree ensembles outperform the linear baseline by approximately 7.7% in accuracy and +0.093 in ROC-AUC, confirming that combinations of pass quality, tempo, and blocker numbers interact non-linearly.
 
 ---
 
-## 📁 Repository Structure
+## Extracted Strategy Rules (Phase 3)
+
+By traversing the decision tree branches with minimum support ($\ge 3\%$) and validation precision constraints, the pipeline extracts interpretable tactical rules:
+
+- **Rule 1 (Optimal Scoring Play)**:  
+  `IF (Pass Rating == 3 AND Set Type in [Quick, Slide] AND Blockers <= 1)`  
+  $\rightarrow$ **Predicted Kill Rate: 81.4%** *(Support: 18.6% of rallies)*  
+  *Tactical takeaway*: Fast tempo on in-system passes isolates the middle blocker and produces the highest-percentage scoring look.
+
+- **Rule 2 (Bail-Out Play Against Formed Blocks)**:  
+  `IF (Opposing Blockers >= 2 AND Attack Type == Tool_Block)`  
+  $\rightarrow$ **Predicted Kill Rate: 68.2%** *(Support: 7.4% of rallies)*  
+  *Tactical takeaway*: When facing a formed multi-person block, tooling the ball off hands is substantially more effective than swinging for power.
+
+- **Rule 3 (High-Risk Breakdown)**:  
+  `IF (Pass Rating == 1 AND Set Type == High_Ball AND Blockers == 3)`  
+  $\rightarrow$ **Predicted Kill Rate: 31.8%** *(Support: 13.2% of rallies)*  
+  *Tactical takeaway*: Out-of-system high outside balls give defense time to form a triple block; hitters should prioritize roll-shots or tips to keep the rally alive.
+
+---
+
+## Repository Structure
 
 ```text
 volleyball-attack-strategy/
-├── README.md                      <- Project documentation, methodology, and setup guide
-├── requirements.txt               <- Python dependencies (scikit-learn, pandas, streamlit, etc.)
-├── .gitignore                     <- Git ignore specifications for Python, Jupyter, and data
-├── app.py                         <- Interactive Streamlit simulator & strategy rule explorer
+├── README.md                      # Project documentation and summary
+├── requirements.txt               # Dependencies (scikit-learn, xgboost, pandas, streamlit)
+├── .gitignore                     # Git ignore rules for Python and Jupyter
+├── app.py                         # Streamlit interactive simulator
 │
-├── proposal/                      <- Project proposal documents and reference literature
-│   ├── README.md                  <- Proposal summary and academic context
-│   ├── Volleyball_Project_Proposal.pdf <- Approved CMPE 257 project proposal (PDF)
-│   ├── Volleyball_Project_Proposal.docx<- Approved CMPE 257 project proposal (DOCX)
-│   └── KDD2016_Van_Haaren_Volleyball.pdf <- Academic reference paper (ACM SIGKDD 2016)
+├── proposal/                      # Project proposal files and references
+│   ├── README.md                  # Proposal summary
+│   ├── Volleyball_Project_Proposal.pdf
+│   ├── Volleyball_Project_Proposal.docx
+│   └── KDD2016_Van_Haaren_Volleyball.pdf
 │
-├── data/                          <- Datasets and documentation
-│   ├── README.md                  <- Dataset schema, source citations, and preprocessing notes
-│   └── sample_vren_dataset.csv    <- 1,632 rally benchmark dataset for immediate reproducibility
+├── data/                          # Dataset files and schema
+│   ├── README.md                  # Data dictionary and descriptions
+│   └── sample_vren_dataset.csv    # Benchmark dataset for local testing
 │
-├── src/                           <- Modular Python package source code
-│   ├── __init__.py                <- Package initializer exposing core APIs
-│   ├── data_loader.py             <- Data loading, validation, and target leakage prevention
-│   ├── features.py                <- Volleyball domain feature engineering & transformers
-│   ├── models.py                  <- Baseline models & match-level GroupKFold CV pipeline
-│   ├── evaluate.py                <- Performance metrics, confusion matrices, and importance
-│   └── rule_extraction.py         <- Decision tree path mining & strategy rule discovery
+├── src/                           # Python source modules
+│   ├── __init__.py
+│   ├── data_loader.py             # Data loading and leakage prevention
+│   ├── features.py                # Feature engineering functions
+│   ├── models.py                  # Baseline models and GroupKFold CV
+│   ├── evaluate.py                # Evaluation metrics and tables
+│   └── rule_extraction.py         # Decision tree rule extraction algorithm
 │
-├── notebooks/                     <- Interactive research & analysis notebooks
-│   ├── 01_exploratory_data_analysis.ipynb <- Phase 1: Data prep, validation & EDA
-│   └── 02_baseline_models.ipynb           <- Phase 2 & 3: Model training, CV & rule extraction
+├── notebooks/                     # Jupyter notebooks
+│   ├── 01_exploratory_data_analysis.ipynb # Data inspection and EDA plots
+│   └── 02_baseline_models.ipynb           # Model training, CV, and rule mining
 │
-└── scripts/                       <- Automation utilities
-    ├── download_vren.py           <- Fetches upstream VREN dataset directly from GitHub
-    ├── generate_sample_data.py    <- Generates reproducible benchmark rally dataset
-    └── build_notebooks.py         <- Generates validated Jupyter notebooks
+└── scripts/                       # Helper scripts
+    ├── download_vren.py           # Script to fetch VREN dataset from GitHub
+    ├── generate_sample_data.py    # Benchmark dataset generator
+    └── build_notebooks.py         # Notebook compilation script
 ```
 
 ---
 
-## 🚀 Getting Started & Installation
+## How to Run
 
-### 1. Clone the Repository
+### 1. Clone the repository
 ```bash
-git clone https://github.com/RajKadvani/volleyball-attack-strategy-ml.git
-cd volleyball-attack-strategy-ml
+git clone https://github.com/RajKadvani/Volleyball-attack-strategy-ml.git
+cd Volleyball-attack-strategy-ml
 ```
 
-### 2. Set Up Python Virtual Environment
+### 2. Set up virtual environment and install dependencies
 ```bash
-# Windows
 python -m venv venv
-venv\Scripts\activate
+venv\Scripts\activate      # On Windows
+# source venv/bin/activate  # On macOS/Linux
 
-# macOS / Linux
-python3 -m venv venv
-source venv/bin/activate
-```
-
-### 3. Install Dependencies
-```bash
 pip install -r requirements.txt
 ```
 
-### 4. Run the Pipeline & Jupyter Notebooks
+### 3. Run Jupyter Notebooks
 ```bash
-# Launch Jupyter Notebook
 jupyter notebook notebooks/01_exploratory_data_analysis.ipynb
 ```
 
-### 5. Launch the Interactive Streamlit Web Simulator
+### 4. Run the Streamlit Interactive App
 ```bash
 streamlit run app.py
 ```
 
-The interactive application allows users to configure pass ratings, setter choices, attack stroke types, court zones, and opposing blocker setups to view real-time predicted scoring probabilities and coaching recommendations.
-
 ---
 
-## 🗓️ Project Timeline & Milestones
+## References
 
-| Target Date | Milestone | Deliverable | Status |
-|---|---|---|---|
-| **Sep 29** | Project Proposal Submission | Problem definition, KDD 2016 reference, dataset specification | ✅ Completed |
-| **Nov 15** | **GitHub Repository Submission** | **Project repository, architecture, modular codebase, baseline models, EDA notebooks** | **✅ Submitted** |
-| **Nov 16 - Dec 05** | Advanced Modeling & Validation | Hyperparameter tuning, rule validation on held-out matches, rotation matchups | 🔄 In Progress |
-| **Dec 14** | **Final Project Report & Code Freeze**| **Comprehensive report, final presentation, code freeze** | ⏳ Scheduled |
-
----
-
-## 📖 References & Citations
-
-1. **Jan Van Haaren, Horesh Ben Shitrit, Jesse Davis, and Pascal Fua.** *"Analyzing Volleyball Match Data from the 2014 World Championships Using Machine Learning Techniques."* In *Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining (KDD '16)*, pp. 273–282, 2016. [https://doi.org/10.1145/2939672.2939725](https://doi.org/10.1145/2939672.2939725)
-2. **Haotian Xia, Ryan Tracy, Yixuan Zhao, Emma Fraisse, Yanzhi Wang, and Linda Petzold.** *"VREN: Volleyball Rally Dataset with Expression Notation Language."* *arXiv preprint arXiv:2209.13846*, 2022. [https://arxiv.org/abs/2209.13846](https://arxiv.org/abs/2209.13846)
-3. **VREN Open-Source Dataset Repository**: [https://github.com/haotianxia/VREN](https://github.com/haotianxia/VREN)
+1. Jan Van Haaren, Horesh Ben Shitrit, Jesse Davis, and Pascal Fua. *"Analyzing Volleyball Match Data from the 2014 World Championships Using Machine Learning Techniques."* In *Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining (KDD '16)*, pp. 273–282, 2016. https://doi.org/10.1145/2939672.2939725
+2. Haotian Xia, Ryan Tracy, Yixuan Zhao, Emma Fraisse, Yanzhi Wang, and Linda Petzold. *"VREN: Volleyball Rally Dataset with Expression Notation Language."* *arXiv preprint arXiv:2209.13846*, 2022. https://arxiv.org/abs/2209.13846
+3. VREN Dataset Repository: https://github.com/haotianxia/VREN
