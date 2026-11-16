@@ -14,16 +14,12 @@ except ImportError:
 
 
 DEFAULT_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
-SAMPLE_CSV_NAME = "sample_vren_dataset.csv"
-FULL_CSV_NAME = "vren_full_dataset.csv"
+DATA_CSV_NAME = "vren_dataset.csv"
 
 
 def get_default_data_path() -> str:
-    """Return path to full dataset if present, else fallback to sample benchmark dataset."""
-    full_path = os.path.join(DEFAULT_DATA_DIR, FULL_CSV_NAME)
-    if os.path.exists(full_path):
-        return full_path
-    return os.path.join(DEFAULT_DATA_DIR, SAMPLE_CSV_NAME)
+    """Return path to primary volleyball rally dataset."""
+    return os.path.join(DEFAULT_DATA_DIR, DATA_CSV_NAME)
 
 
 def load_rally_data(file_path: Optional[str] = None):

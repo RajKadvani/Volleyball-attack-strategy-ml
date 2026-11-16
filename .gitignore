@@ -42,6 +42,11 @@ venv.bak/
 Thumbs.db
 desktop.ini
 
+# Proposal documents (kept locally, not on GitHub)
+proposal/
+*.docx
+*.pdf
+
 # Large dataset raw files (if exceeding 100MB)
 data/raw/*.mp4
 data/raw/*.avi

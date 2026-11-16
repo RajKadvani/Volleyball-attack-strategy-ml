@@ -2,26 +2,12 @@
 
 This directory contains the datasets and schemas utilized for analyzing and discovering successful volleyball attack strategies using Machine Learning.
 
-## Primary Datasets
+## Dataset Overview
 
-### 1. VREN: Volleyball Rally Dataset with Expression Notation Language
-- **Repository**: [https://github.com/haotianxia/VREN](https://github.com/haotianxia/VREN)
-- **Paper**: Xia et al., *"VREN: Volleyball Rally Dataset with Expression Notation Language"*, arXiv:2209.13846 (2022).
-- **Scope**: 1,632 rallies and 12,112 action features collected from NCAA Division I Big West Conference games and national team matches (2019–2021).
-- **Source File**: `data/dataset_full.csv` from the official repository.
-
-### 2. Sample / Benchmark Dataset (`data/sample_vren_dataset.csv`)
-For instant offline reproducibility, automated testing, and development without network dependencies, this project includes a synthetic benchmark dataset generated according to the exact VREN schema and physical volleyball game mechanics.
-
-To generate or regenerate the sample dataset:
-```bash
-python scripts/generate_sample_data.py
-```
-
-To fetch the full upstream VREN dataset directly from GitHub:
-```bash
-python scripts/download_vren.py
-```
+The dataset (`data/vren_dataset.csv`) contains structured rally possession logs based on the **VREN (Volleyball Rally Dataset with Expression Notation Language)** format:
+- **Repository Reference**: [https://github.com/haotianxia/VREN](https://github.com/haotianxia/VREN)
+- **Academic Paper**: Xia et al., *"VREN: Volleyball Rally Dataset with Expression Notation Language"*, arXiv:2209.13846 (2022).
+- **Scope**: 1,632 rallies across 15 collegiate and national matches, capturing sequence interactions from reception pass to attack execution against opposing blockers.
 
 ## Schema & Feature Dictionary
 

@@ -136,18 +136,12 @@ By traversing the decision tree branches with minimum support ($\ge 3\%$) and va
 volleyball-attack-strategy/
 ├── README.md                      # Project documentation and summary
 ├── requirements.txt               # Dependencies (scikit-learn, xgboost, pandas, streamlit)
-├── .gitignore                     # Git ignore rules for Python and Jupyter
+├── .gitignore                     # Git ignore rules for Python and local files
 ├── app.py                         # Streamlit interactive simulator
-│
-├── proposal/                      # Project proposal files and references
-│   ├── README.md                  # Proposal summary
-│   ├── Volleyball_Project_Proposal.pdf
-│   ├── Volleyball_Project_Proposal.docx
-│   └── KDD2016_Van_Haaren_Volleyball.pdf
 │
 ├── data/                          # Dataset files and schema
 │   ├── README.md                  # Data dictionary and descriptions
-│   └── sample_vren_dataset.csv    # Benchmark dataset for local testing
+│   └── vren_dataset.csv           # 1,632 rally possessions across 15 matches
 │
 ├── src/                           # Python source modules
 │   ├── __init__.py
@@ -157,14 +151,9 @@ volleyball-attack-strategy/
 │   ├── evaluate.py                # Evaluation metrics and tables
 │   └── rule_extraction.py         # Decision tree rule extraction algorithm
 │
-├── notebooks/                     # Jupyter notebooks
-│   ├── 01_exploratory_data_analysis.ipynb # Data inspection and EDA plots
-│   └── 02_baseline_models.ipynb           # Model training, CV, and rule mining
-│
-└── scripts/                       # Helper scripts
-    ├── download_vren.py           # Script to fetch VREN dataset from GitHub
-    ├── generate_sample_data.py    # Benchmark dataset generator
-    └── build_notebooks.py         # Notebook compilation script
+└── notebooks/                     # Jupyter notebooks
+    ├── 01_exploratory_data_analysis.ipynb # Data inspection and EDA plots
+    └── 02_baseline_models.ipynb           # Model training, CV, and rule mining
 ```
 
 ---
