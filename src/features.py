@@ -1,25 +1,29 @@
 """
 Feature engineering module for volleyball possession and tactical attack analysis.
 CMPE 257 - Machine Learning
+Includes domain-specific features and polynomial tactical interaction terms (Step 3).
 """
 
 import numpy as np
+
 try:
     import pandas as pd
-    from sklearn.preprocessing import OneHotEncoder, StandardScaler
+    from sklearn.preprocessing import OneHotEncoder, StandardScaler, PolynomialFeatures
     from sklearn.compose import ColumnTransformer
+    from sklearn.feature_selection import VarianceThreshold
     HAS_SKLEARN = True
 except ImportError:
     HAS_SKLEARN = False
 
 
-def engineer_features(df):
+def engineer_features(df, include_interactions: bool = True):
     """
     Generate domain-specific volleyball features based on Van Haaren et al. (KDD 2016)
-    and VREN notation specifications.
+    and VREN notation specifications, with optional polynomial tactical interactions (Step 3).
     
     Args:
         df: Input pandas DataFrame
+        include_interactions: Whether to add 2nd-degree tactical interaction cross-products
         
     Returns:
         pd.DataFrame with engineered features added.
@@ -28,9 +32,11 @@ def engineer_features(df):
     
     # 1. System state (In-system vs Out-of-system pass)
     if "pass_rating" in df_feat.columns:
-        df_feat["is_in_system"] = (df_feat["pass_rating"].astype(float) == 3.0).astype(int)
-        df_feat["is_out_of_system"] = (df_feat["pass_rating"].astype(float) == 1.0).astype(int)
+        df_feat["pass_rating"] = df_feat["pass_rating"].astype(float)
+        df_feat["is_in_system"] = (df_feat["pass_rating"] == 3.0).astype(int)
+        df_feat["is_out_of_system"] = (df_feat["pass_rating"] == 1.0).astype(int)
     else:
+        df_feat["pass_rating"] = 2.0
         df_feat["is_in_system"] = 0
         df_feat["is_out_of_system"] = 0
         
@@ -69,17 +75,41 @@ def engineer_features(df):
     
     # 7. Rally Phase: First attack (serve receive) vs Transition (counter-attack)
     if "round" in df_feat.columns:
-        df_feat["is_transition_attack"] = (df_feat["round"].astype(int) > 1).astype(int)
+        df_feat["round"] = df_feat["round"].astype(float)
+        df_feat["is_transition_attack"] = (df_feat["round"] > 1.0).astype(int)
     else:
+        df_feat["round"] = 1.0
         df_feat["is_transition_attack"] = 0
+
+    # 8. Step 3: Polynomial Interaction Features (Textbook ML Technique)
+    # Generates cross-product interaction terms that reflect non-linear volleyball physics
+    if include_interactions:
+        # Pass quality x Blocker pressure
+        df_feat["interact_pass_blockers"] = df_feat["pass_rating"] * (3.0 - df_feat["num_blockers"])
+        # Pass quality x Tempo
+        df_feat["interact_pass_tempo"] = df_feat["pass_rating"] * df_feat["is_quick_attack"]
+        # Transition fatigue x Blocker count
+        df_feat["interact_round_blockers"] = df_feat["round"] * df_feat["num_blockers"]
+        # Block advantage x In-system pass
+        df_feat["interact_advantage_insystem"] = df_feat["block_advantage"] * df_feat["is_in_system"]
+        # Out of system breakdown index
+        df_feat["interact_outofsystem_highball"] = df_feat["is_out_of_system"] * df_feat["is_high_ball"]
+        # Back-row pipe attack vs formed block
+        df_feat["interact_backrow_blockers"] = df_feat["is_back_row"] * df_feat["num_blockers"]
         
     return df_feat
 
 
-def prepare_model_data(df, target_col="attack_success", group_col="match_id"):
+def prepare_model_data(df, target_col="attack_success", group_col="match_id", include_interactions: bool = True):
     """
     Complete preprocessing pipeline transforming raw rally data into encoded numerical matrices.
     
+    Args:
+        df: Input pandas DataFrame
+        target_col: Target binary column name
+        group_col: Group column name for GroupKFold
+        include_interactions: Whether to enable Step 3 polynomial interaction features
+        
     Returns:
         X_encoded: np.ndarray of encoded features
         y: np.ndarray target labels
@@ -89,8 +119,8 @@ def prepare_model_data(df, target_col="attack_success", group_col="match_id"):
     if not HAS_SKLEARN:
         raise ImportError("scikit-learn is required for prepare_model_data.")
         
-    # Feature engineering
-    df_feat = engineer_features(df)
+    # Feature engineering with interactions
+    df_feat = engineer_features(df, include_interactions=include_interactions)
     
     # Separate target & groups
     y = df_feat[target_col].values.astype(int)
